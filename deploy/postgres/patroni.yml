@@ -1,0 +1,51 @@
+# deploy/postgres/patroni.yml
+
+scope: cluster1
+name: ${HOSTNAME} # Unique name per node
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: ${NODE_IP}:8008
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: ${NODE_IP}:5432
+  data_dir: /var/lib/postgresql/data
+  bin_dir: /usr/lib/postgresql/16/bin # Ensure this matches your PG version
+  authentication:
+    replication:
+      username: replicator
+      password: repl_password
+    superuser:
+      username: postgres
+      password: super_password
+
+  parameters:
+    # High-performance settings for 100M vectors
+    max_connections: 500
+    shared_buffers: 4GB # Rule of thumb: 25% of RAM
+    work_mem: 64MB      # High work_mem helps with complex GIN/Array filters
+    maintenance_work_mem: 2GB # CRITICAL for fast DiskANN index builds
+    max_wal_size: 5GB
+    min_wal_size: 1GB
+    
+    # pgvectorscale / DiskANN specific optimizations
+    # These settings allow the index build to use more CPU cores
+    max_parallel_maintenance_workers: 4 
+    max_parallel_workers: 8
+
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+
+  # Initial DB creation
+  post_init: /deploy/postgres/init-db.sql
+
+etcd:
+  hosts: etcd:2379 # Point to your etcd container
