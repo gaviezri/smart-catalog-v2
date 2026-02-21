@@ -1,9 +1,8 @@
-"""Users domain — public exports."""
-from users.domain.exceptions import InvalidCredentialsError, UserNotFoundError
-from users.domain.models import Role, User
-from users.domain.ports import TokenBlacklistPort, UserRepository
-from users.domain.services import AuthService
+"""Users domain — public exports.
 
+Exports are string-listed to avoid circular imports during Django app loading.
+Import concrete classes directly from their submodules when needed.
+"""
 __all__: list[str] = [
     "AuthService",
     "InvalidCredentialsError",

@@ -1,8 +1,8 @@
-"""Users infrastructure — public exports."""
-from users.infrastructure.orm_models import UserORM
-from users.infrastructure.repositories import DjangoUserRepository, InMemoryTokenBlacklist
-from users.infrastructure.token_service import TokenService
+"""Users infrastructure — public exports.
 
+Exports are string-listed to avoid circular imports during Django app loading.
+Import concrete classes directly from their submodules when needed.
+"""
 __all__: list[str] = [
     "DjangoUserRepository",
     "InMemoryTokenBlacklist",

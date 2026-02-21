@@ -1,7 +1,8 @@
-"""Products infrastructure — public exports."""
-from products.infrastructure.daos import DjangoBrandDAO, DjangoCategoryDAO, DjangoProductDAO
-from products.infrastructure.orm_models import BrandORM, CategoryORM, ProductORM, ProductSearchORM
+"""Products infrastructure — public exports.
 
+Exports are string-listed to avoid circular imports during Django app loading.
+Import concrete classes directly from their submodules when needed.
+"""
 __all__: list[str] = [
     "BrandORM",
     "CategoryORM",
