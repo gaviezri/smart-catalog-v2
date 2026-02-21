@@ -5,6 +5,7 @@ Runs on startup if the database is empty. Idempotent.
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from pathlib import Path
 
@@ -16,7 +17,11 @@ from users.infrastructure.orm_models import UserORM
 
 logger = structlog.get_logger(__name__)
 
-INGESTION_DIR: Path = Path(__file__).resolve().parents[5] / "data" / "ingestion"
+# Docker sets INGESTION_DIR=/data/ingestion; local dev resolves relative to project root
+# This is a bit of a hack to make it work in both cases
+INGESTION_DIR: Path = Path(
+    os.environ.get("INGESTION_DIR", Path(__file__).resolve().parent.parent.parent.parent.parent.parent / "data" / "ingestion")
+)
 
 
 class Command(BaseCommand):

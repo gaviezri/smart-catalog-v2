@@ -27,7 +27,8 @@ COPY data/ingestion/ /data/ingestion/
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    DJANGO_SETTINGS_MODULE=config.settings.prod
+    DJANGO_SETTINGS_MODULE=config.settings.prod \
+    INGESTION_DIR=/data/ingestion
 
 EXPOSE 8000
 
