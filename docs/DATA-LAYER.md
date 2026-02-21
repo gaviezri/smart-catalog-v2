@@ -3,7 +3,7 @@
 After reading how OpenAI was able to create a resilient and highly available system, I decided to take inspiration from their setup.
 A normalized DB structure is good for data integrity and low storage footprint but with the cost of expensive joins that would suffocate the system in peak times.
 I figured, a constellation where the system can enjoy best of both worlds (Hannah Montana much...), would be the best.
-So I picked the following Topology for the backbone of the application - the Data Layer:
+So I picked the following Topology that implements the `Single Primary` pattern as the backbone of the application - the Data Layer:
 
 
 
