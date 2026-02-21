@@ -36,7 +36,7 @@ USER catalog
 
 ENTRYPOINT ["sh", "-c", "\
     echo 'Running migrations...' && \
-    python manage.py migrate --noinput && \
+    python manage.py migrate --noinput --fake-initial && \
     echo 'Seeding database...' && \
     python manage.py seed_db && \
     echo 'Starting gunicorn...' && \
