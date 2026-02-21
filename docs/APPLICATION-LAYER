@@ -20,3 +20,6 @@ Hexagonal lets us treat our vector search as a specialized adapter.
 This isolates the high-performance infrastructure code from our business logic. If we eventually need to swap pgvector for a dedicated vector DB or change our sharding strategy,
 we only swap the adapter—your core API stays untouched. It's a cleaner way to manage a system where the infrastructure is the heavy lifter.
 
+
+
+[hexagonal-architecture](https://www.happycoders.eu/wp-content/uploads/2023/01/hexagonal-architecture.v2-600x431.png)
