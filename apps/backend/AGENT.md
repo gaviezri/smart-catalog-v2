@@ -13,6 +13,7 @@
 | Language | Python 3.13 |
 | Framework | Django 5.x (latest stable) |
 | API layer | Django REST Framework (REST only — serves a React SPA) |
+| API docs | `drf-spectacular` (OpenAPI 3.0 schema auto-generation) |
 | Database | PostgreSQL with `pgvector-python` via Django ORM |
 | Auth | JWT via `djangorestframework-simplejwt` |
 | DI | `dependency-injector` (declarative IoC containers) |
@@ -215,7 +216,28 @@ class ProductContainer(containers.DeclarativeContainer):
 
 ---
 
-## 11. Data Seeding
+## 11. API Documentation (OpenAPI)
+
+- Use `drf-spectacular` for automatic OpenAPI 3.0 schema generation.
+- **Every view/viewset** must be annotated with `@extend_schema()` — include summary, description, request/response serializers, and error responses.
+- Serve interactive docs at `/api/docs/` (Swagger UI) and `/api/schema/` (raw YAML).
+- Keep schema annotations co-located with the view, not in a separate file.
+
+---
+
+## 12. Exception Handling
+
+- **Global exception handler**: register a custom DRF `EXCEPTION_HANDLER` in settings that catches all unhandled exceptions, logs them via `structlog`, and returns a consistent JSON error envelope:
+  ```json
+  {"error": {"code": "PRODUCT_NOT_FOUND", "message": "...", "status": 404}}
+  ```
+- **Domain exceptions**: each app defines its own exceptions in `domain/exceptions.py` (e.g. `ProductNotFoundException`, `InsufficientPermissionsError`). These are pure Python exceptions — no DRF dependency.
+- **Mapping layer**: the global handler maps domain exceptions → HTTP status codes. Adding a new domain exception requires only adding an entry to the mapping, not changing view code.
+- Never catch-and-silence exceptions in views — let them propagate to the handler.
+
+---
+
+## 13. Data Seeding
 
 On startup (via a Django management command called from the entrypoint), the system
 checks if the `product` table is empty. If so, it runs the seeding pipeline located
@@ -229,7 +251,7 @@ This is idempotent and only runs when the database is empty.
 
 ---
 
-## 12. Environment Configuration
+## 14. Environment Configuration
 
 - All secrets and environment-specific values come from **environment variables**.
 - Use `python-decouple` or `django-environ` for typed access with defaults.
@@ -237,7 +259,7 @@ This is idempotent and only runs when the database is empty.
 
 ---
 
-## 13. Non-Negotiable Rules
+## 15. Non-Negotiable Rules
 
 > [!CAUTION]
 > Violating any of these rules must be flagged and resolved before merge.
@@ -249,3 +271,5 @@ This is idempotent and only runs when the database is empty.
 5. **Every service method has a corresponding test**.
 6. **Ruff must pass with zero warnings** before commit.
 7. **Secrets never appear in code or version control**.
+8. **Every view has an `@extend_schema()` annotation** — no undocumented endpoints.
+9. **All exceptions flow through the global handler** — no ad-hoc try/except in views that swallow errors.
