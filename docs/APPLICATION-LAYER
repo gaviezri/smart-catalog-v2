@@ -19,3 +19,42 @@ At 100M products, the "how" (Postgres tuning, pgvector, and replica routing) is 
 Hexagonal lets us treat our vector search as a specialized adapter. 
 This isolates the high-performance infrastructure code from our business logic. If we eventually need to swap pgvector for a dedicated vector DB or change our sharding strategy,
 we only swap the adapter—your core API stays untouched. It's a cleaner way to manage a system where the infrastructure is the heavy lifter.
+
+## Dependency Injection
+
+Python isn't Java — DI isn't built in. But without it, hexagonal architecture is just a folder structure.
+We use `dependency-injector` with declarative containers because it gives us compile-time-like wiring (the container validates the dependency graph on import) without the annotation magic that makes Spring Boot configs feel like magic.
+Each Django app owns its own container. The app's `AppConfig.ready()` wires it. Domain services never import concrete implementations.
+
+## Read/Write Repository Split
+
+With Interface Segregation in mind, `ProductReadRepository` and `ProductWriteRepository` are separate ABCs.
+This isn't premature — it maps directly onto the database topology. Reads hit the replica via `DATABASE_ROUTERS`, writes hit the primary.
+If we ever need to optimise reads separately (materialised views, caching layer), we swap the read adapter without touching write logic.
+
+## Structured Logging
+
+`structlog` over Python's `logging` because we need machine-parseable logs from day one.
+Every log entry binds `request_id`, `user_id`, and OTel `trace_id`. When debugging a production issue at 2am, grep-able JSON beats wall-of-text every time.
+Console renderer in dev, JSON in prod — same code, different config.
+
+## JWT & Auth Design
+
+`simplejwt` handles the heavy lifting (token issue/refresh/verify, rotation, claim injection).
+The domain layer doesn't know JWT exists — it talks to an `AuthenticationPort` ABC.
+When we add OAuth later, we write a new adapter, swap it in the DI container, and the domain doesn't change. Zero code modifications to `AuthService`.
+
+## Data Seeding
+
+A single `python manage.py seed_db` command handles the full pipeline: default users + products from `products.json`.
+Idempotent — checks if tables already have data before insertion. This runs from the Docker entrypoint before `gunicorn` starts, so every fresh deployment gets a populated catalog out of the box.
+
+## Known Limitations
+
+### Token Blacklist (In-Memory)
+The current token blacklist implementation uses an **in-memory set** to store revoked JWTs.
+This means:
+- Blacklisted tokens are **lost on server restart**.
+- In a multi-worker/multi-process deployment, blacklisted tokens are **not shared** across workers.
+
+This is acceptable for the MVP phase. Before production, this should be replaced with a **Redis-backed** or **database-backed** blacklist to ensure durability and cross-worker consistency.
