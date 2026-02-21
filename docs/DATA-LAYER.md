@@ -9,10 +9,6 @@ So I picked the following Topology for the backbone of the application - the Dat
 
 ```mermaid
 graph TD
-    subgraph Clients_Layer [Client Layer]
-        Clients[Clients]
-    end
-
     subgraph App_Layer [Application Layer]
         API[API Servers<br/>Stateless]
     end
@@ -39,7 +35,6 @@ graph TD
     end
 
     %% Flow
-    Clients --> API
     API --> PB_Write
     API --> PB_Read
 
