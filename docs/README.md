@@ -63,3 +63,7 @@ graph TD
     style P2 fill:#d1f2eb,stroke:#16a085
     style HA fill:#bbf,stroke:#333
 ```
+
+# Application Architectrue
+
+![hexagonal-architecture](https://www.happycoders.eu/wp-content/uploads/2023/01/hexagonal-architecture.v2-600x431.png)
