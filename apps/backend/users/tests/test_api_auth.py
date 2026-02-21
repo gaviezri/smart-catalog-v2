@@ -61,10 +61,18 @@ class TestLoginEndpoint:
 class TestLogoutEndpoint:
     """POST /api/auth/logout."""
 
-    def test_logout_success(self, api_client: APIClient) -> None:
+    def test_logout_success(self, api_client: APIClient, admin_user: UserORM) -> None:
+        # Login first to get a real token
+        login_resp = api_client.post(
+            "/api/auth/login",
+            {"username": "admin", "password": "admin123"},
+            format="json",
+        )
+        token: str = login_resp.json()["access"]
+
         response = api_client.post(
             "/api/auth/logout",
-            HTTP_AUTHORIZATION="Bearer some-token",
+            HTTP_AUTHORIZATION=f"Bearer {token}",
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["message"] == "Logged out successfully."

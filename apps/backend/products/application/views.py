@@ -36,7 +36,7 @@ def _product_to_dict(p: Product) -> dict:
         "categoryNames": [c.name for c in p.categories],
         "price": p.price,
         "tier": p.tier.value,
-        "gender": p.gender,
+        "gender": p.gender.value,
         "color": p.color,
         "productUrl": p.product_url,
         "imageUrl": p.image_url,

@@ -85,7 +85,7 @@ class ProductSearchORM(models.Model):
 
     product = models.OneToOneField(
         ProductORM,
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         primary_key=True,
         related_name="search_projection",
     )
