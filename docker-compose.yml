@@ -1,0 +1,88 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Smart Catalog V2 — Docker Compose
+#
+# Default mode:   docker compose up
+#   → single Postgres + backend (simple dev setup)
+#
+# Full HA mode:   docker compose --profile ha up
+#   → Patroni cluster + PgBouncer + HAProxy + backend
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Simple Postgres (default, no profile needed) ──────────────────────────
+  postgres:
+    image: timescale/timescaledb-ha:pg17
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: smart_catalog
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./deploy/postgres/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── Backend ──────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_SECRET_KEY: dev-secret-change-in-prod
+      DB_NAME: smart_catalog
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      # In simple mode, replica points to the same instance
+      DB_REPLICA_HOST: postgres
+      DB_REPLICA_PORT: "5432"
+      GUNICORN_WORKERS: "2"
+      CORS_ALLOWED_ORIGINS: "http://localhost:5173,http://localhost:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+  # ── HA Topology (activate with: docker compose --profile ha up) ──────────
+
+  # Patroni node 1 (primary)
+  # patroni-1:
+  #   profiles: ["ha"]
+  #   image: timescale/timescaledb-ha:pg17
+  #   # TODO: mount Patroni config from deploy/postgres/
+  #   # ...
+
+  # Patroni node 2 (replica)
+  # patroni-2:
+  #   profiles: ["ha"]
+  #   image: timescale/timescaledb-ha:pg17
+  #   # ...
+
+  # PgBouncer — connection pooling
+  # pgbouncer:
+  #   profiles: ["ha"]
+  #   image: bitnami/pgbouncer:latest
+  #   volumes:
+  #     - ./deploy/pgbouncer:/etc/pgbouncer:ro
+  #   # ...
+
+  # HAProxy — read/write split routing
+  # haproxy:
+  #   profiles: ["ha"]
+  #   image: haproxy:lts
+  #   volumes:
+  #     - ./deploy/haproxy:/usr/local/etc/haproxy:ro
+  #   ports:
+  #     - "5432:5432"   # write port
+  #     - "5433:5433"   # read port
+  #   # ...
+
+volumes:
+  pg_data:

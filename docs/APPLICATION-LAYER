@@ -32,6 +32,10 @@ With Interface Segregation in mind, `ProductReadRepository` and `ProductWriteRep
 This isn't premature — it maps directly onto the database topology. Reads hit the replica via `DATABASE_ROUTERS`, writes hit the primary.
 If we ever need to optimise reads separately (materialised views, caching layer), we swap the read adapter without touching write logic.
 
+In simple mode (default `docker compose up`) both `DB_HOST` and `DB_REPLICA_HOST` point to the same single Postgres container — no actual replication, but the routing logic is exercised end-to-end.
+When the HA profile is activated, Patroni handles streaming replication between primary and replica nodes, and HAProxy exposes separate ports for writes (5432) and reads (5433).
+The transition is two env vars: `DB_REPLICA_HOST → haproxy`, `DB_REPLICA_PORT → 5433`. Zero code changes.
+
 ## Structured Logging
 
 `structlog` over Python's `logging` because we need machine-parseable logs from day one.
