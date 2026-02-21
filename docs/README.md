@@ -66,4 +66,4 @@ graph TD
 
 # Application Architectrue
 
-![hexagonal-architecture](https://www.happycoders.eu/wp-content/uploads/2023/01/hexagonal-architecture.v2-600x431.png)
+![hexagonal-architecture](https://www.happycoders.eu/wp-content/uploads/2023/01/hexagonal-architecture-ddd-domain-driven-design-600x484.png)
