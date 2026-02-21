@@ -1,27 +1,30 @@
-"""Management command: seed the database with products and default users.
+"""Management command: seed the database with products, users and embeddings.
 
 Runs on startup if the database is empty. Idempotent.
 """
 from __future__ import annotations
 
-import json
-import os
 import uuid
-from pathlib import Path
+from typing import Any
 
 import structlog
 from django.core.management.base import BaseCommand
+from django.db import transaction
 
-from products.infrastructure.orm_models import BrandORM, CategoryORM, ProductORM
+from products.infrastructure.orm_models import (
+    BrandORM,
+    CategoryORM,
+    ProductCategoryORM,
+    ProductORM,
+    ProductSearchORM,
+)
 from users.infrastructure.orm_models import UserORM
 
-logger = structlog.get_logger(__name__)
+# Import generation logic from sibling seed/ package
+from .seed.generate_embeddings import generate_search_records
+from .seed.generate_products import generate_all_products
 
-# Docker sets INGESTION_DIR=/data/ingestion; local dev resolves relative to project root
-# This is a bit of a hack to make it work in both cases
-INGESTION_DIR: Path = Path(
-    os.environ.get("INGESTION_DIR", Path(__file__).resolve().parent.parent.parent.parent.parent.parent / "data" / "ingestion")
-)
+logger = structlog.get_logger(__name__)
 
 
 class Command(BaseCommand):
@@ -32,7 +35,7 @@ class Command(BaseCommand):
     def handle(self, *args: object, **options: object) -> None:
         """Run the seed pipeline."""
         self._seed_users()
-        self._seed_products()
+        self._seed_data()
 
     def _seed_users(self) -> None:
         """Create default admin and user accounts."""
@@ -44,45 +47,95 @@ class Command(BaseCommand):
         UserORM.objects.create_user(username="user", password="user123", role="USER")
         logger.info("seed.users.done", users=["admin (ADMIN)", "user (USER)"])
 
-    def _seed_products(self) -> None:
-        """Load products.json and insert into DB."""
+    def _seed_data(self) -> None:
+        """Generate and seed products, categories, brands and embeddings."""
         if ProductORM.objects.exists():
             logger.info("seed.products.skip", reason="already seeded")
             return
 
-        products_path: Path = INGESTION_DIR / "products.json"
-        if not products_path.exists():
-            logger.warning("seed.products.skip", reason="products.json not found", path=str(products_path))
-            return
+        logger.info("seed.generation.start")
+        
+        # 1. Generate core product data
+        products_data = generate_all_products(count=100)
+        logger.info("seed.products.generated", count=len(products_data))
 
-        with open(products_path) as f:
-            products_data: list[dict] = json.load(f)
+        # 2. Generate embeddings and search records
+        search_records = generate_search_records(products_data)
+        logger.info("seed.embeddings.generated", count=len(search_records))
 
-        logger.info("seed.products.start", count=len(products_data))
+        logger.info("seed.db.insertion.start")
+        
+        with transaction.atomic():
+            # Maps to track DB IDs for junction table and search table
+            json_id_to_db_product_id: dict[int, int] = {}
+            brand_name_to_id: dict[str, int] = {}
+            cat_name_to_id: dict[str, int] = {}
 
-        for data in products_data:
-            brand_name: str = data["brand"]
-            brand, _ = BrandORM.objects.get_or_create(name=brand_name)
+            # A. Process Brands
+            unique_brands = sorted({p["brand"] for p in products_data})
+            for name in unique_brands:
+                brand, _ = BrandORM.objects.get_or_create(name=name)
+                brand_name_to_id[name] = brand.id
 
-            category_orms: list[CategoryORM] = []
-            for cat_name in data["categories"]:
+            # B. Process Categories
+            unique_cats = set()
+            for p in products_data:
+                unique_cats.update(p["categories"])
+            for name in sorted(unique_cats):
                 cat, _ = CategoryORM.objects.get_or_create(
-                    name=cat_name,
+                    name=name,
                     defaults={"public_id": uuid.uuid4()},
                 )
-                category_orms.append(cat)
+                cat_name_to_id[name] = cat.id
 
-            product: ProductORM = ProductORM.objects.create(
-                public_id=data.get("publicId", uuid.uuid4()),
-                title=data["title"],
-                brand=brand,
-                price=data["price"],
-                tier=data["tier"],
-                gender=data.get("gender", "U"),
-                color=data.get("color", ""),
-                product_url=data.get("productUrl", ""),
-                image_url=data.get("imageUrl", ""),
-            )
-            product.categories.set(category_orms)
+            # C. Process Products and M2M
+            for data in products_data:
+                brand = BrandORM.objects.get(id=brand_name_to_id[data["brand"]])
+                product = ProductORM.objects.create(
+                    public_id=data.get("publicId", uuid.uuid4()),
+                    title=data["title"],
+                    brand=brand,
+                    price=data["price"],
+                    tier=data["tier"],
+                    gender=data.get("gender", "U"),
+                    color=data.get("color", ""),
+                    product_url=data.get("productUrl", ""),
+                    image_url=data.get("imageUrl", ""),
+                )
+                json_id_to_db_product_id[data["id"]] = product.id
+                
+                # Junction table
+                for cat_name in data["categories"]:
+                    cat_id = cat_name_to_id[cat_name]
+                    ProductCategoryORM.objects.create(
+                        product_id=product.id,
+                        category_id=cat_id
+                    )
 
-        logger.info("seed.products.done", count=len(products_data))
+            # D. Process Search Table (Embeddings)
+            for rec in search_records:
+                db_product_id = json_id_to_db_product_id[rec["product_id"]]
+                brand_id = brand_name_to_id[rec["brand_name"]]
+                
+                # In embeddings gen, cat ids are sequential 1-indexed based on alpha sort
+                # We need to map them back to DB IDs. 
+                # Re-constructing the same mapping as generate_embeddings.py
+                all_cats_sorted = sorted(cat_name_to_id.keys())
+                category_lookup = {name: i + 1 for i, name in enumerate(all_cats_sorted)}
+                inv_lookup = {v: k for k, v in category_lookup.items()}
+                
+                db_cat_ids = [cat_name_to_id[inv_lookup[cid]] for cid in rec["category_ids"]]
+
+                ProductSearchORM.objects.create(
+                    product_id=db_product_id,
+                    embedding=rec["embedding"],
+                    brand_id=brand_id,
+                    brand_name=rec["brand_name"],
+                    tier=rec["tier"],
+                    price=rec["price"],
+                    category_ids=db_cat_ids,
+                    gender=rec["gender"],
+                    color=rec["color"],
+                )
+
+        logger.info("seed.db.insertion.done", count=len(products_data))

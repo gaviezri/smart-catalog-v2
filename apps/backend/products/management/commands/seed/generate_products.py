@@ -95,9 +95,14 @@ def generate_product(product_id: int) -> dict:
     }
 
 
-def main():
+def generate_all_products(count: int = 100) -> list[dict]:
+    """Generate a list of products."""
     random.seed(42)
-    products = [generate_product(i) for i in range(1, 101)]
+    return [generate_product(i) for i in range(1, count + 1)]
+
+
+def main():
+    products = generate_all_products(100)
 
     with open("products.json", "w") as f:
         json.dump(products, f, indent=2)

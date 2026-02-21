@@ -51,11 +51,8 @@ def _product_to_text(product: dict) -> str:
     )
 
 
-def main():
-    # ── Load products ────────────────────────────────────────────────────
-    with open("products.json") as f:
-        products = json.load(f)
-
+def generate_search_records(products: list[dict]) -> list[dict]:
+    """Generate search records with embeddings for a list of products."""
     brand_lookup, category_lookup = _build_lookup(products)
 
     # ── Load model ───────────────────────────────────────────────────────
@@ -82,6 +79,15 @@ def main():
             "gender": product["gender"],
             "color": product["color"],
         })
+    return records
+
+
+def main():
+    # ── Load products ────────────────────────────────────────────────────
+    with open("products.json") as f:
+        products = json.load(f)
+
+    records = generate_search_records(products)
 
     # ── Write output ─────────────────────────────────────────────────────
     with open("product_search.json", "w") as f:
