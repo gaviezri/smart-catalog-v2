@@ -171,6 +171,9 @@ Each index serves us in a different aspect:
 - indexes on `tier` and `brand_id` to allow filtering based on those criterias
 - index on `category_ids` to allow fast multivalue filtering by selected categories (_Sportswear_ + _Pants_ + _Waterproof_)
 
+### Why HNSW?
+Implementing the HNSW (Hierarchical Navigable Small World) index is critical for maintaining high-performance similarity searches as the product catalog grows. While a flat search performs a brute-force scan with $O(N)$ complexity, HNSW utilizes a multi-layered graph structure to enable Approximate Nearest Neighbor (ANN) search with $O(\log N)$ complexity. This ensures that semantic queries and recommendations remain sub-millisecond even at scale, providing the speed necessary for a premium user experience without the linear performance degradation of unindexed vector search.
+
 (is it "indexes" or "indices"...?)
 
 ---
