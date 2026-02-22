@@ -25,6 +25,7 @@ This will:
 ### HA Mode (Production Topology)
 
 Full HA stack: etcd → Patroni cluster (streaming replication) → HAProxy (read/write split) → PgBouncer (connection pooling).
+(see `docs/DATA-LAYER.md` for more information)
 
 ```bash
 docker compose --profile ha up --build
