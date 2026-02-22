@@ -245,7 +245,7 @@ in `data/ingestion/`:
 
 1. `generate_products.py` → `products.json`
 2. `generate_embeddings.py` → `product_search.json` (1536-dim vectors via local model)
-3. `seed_db.py` — inserts brands, categories, products, product_categories, and product_search
+3. `seed_db.py` — inserts brands, categories, products, products_categories, and product_search
 
 This is idempotent and only runs when the database is empty.
 

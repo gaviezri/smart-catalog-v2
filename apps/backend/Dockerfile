@@ -20,15 +20,9 @@ COPY --from=builder /install /usr/local
 # Backend source
 COPY apps/backend/ /app/
 
-# Data ingestion scripts (used by `manage.py seed_db`)
-# The management command resolves: Path(__file__).parents[5] / "data" / "ingestion"
-# __file__ = /app/products/management/commands/seed_db.py  → parents[5] = /
-COPY data/ingestion/ /data/ingestion/
-
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    DJANGO_SETTINGS_MODULE=config.settings.prod \
-    INGESTION_DIR=/data/ingestion
+    DJANGO_SETTINGS_MODULE=config.settings.prod
 
 EXPOSE 8000
 

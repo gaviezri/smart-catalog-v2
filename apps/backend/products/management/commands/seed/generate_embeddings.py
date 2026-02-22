@@ -1,23 +1,12 @@
 """
-Generate real embeddings for every product in products.json using a local model.
-
-Model : Alibaba-NLP/gte-Qwen2-1.5B-instruct  (1536-dim, runs locally)
+Generate mock random embeddings for every product in products.json.
 Output: product_search.json
-
-Each record mirrors the `product_search` table:
-  - product_id, embedding, brand_id, brand_name,
-    tier, price, category_ids, gender, color
-
-Requirements:
-  pip install sentence-transformers torch
 """
 
 import json
+import random
 
-from sentence_transformers import SentenceTransformer
-
-MODEL_NAME = "Alibaba-NLP/gte-Qwen2-1.5B-instruct"
-BATCH_SIZE = 16
+MODEL_NAME = "mock-random-1536"
 
 
 def _build_lookup(products: list[dict]) -> tuple[dict[str, int], dict[str, int]]:
@@ -38,7 +27,7 @@ def _build_lookup(products: list[dict]) -> tuple[dict[str, int], dict[str, int]]
 
 
 def _product_to_text(product: dict) -> str:
-    """Build a descriptive sentence for a product to embed."""
+    """Build a descriptive sentence for a product (kept for interface compatibility)."""
     cats = ", ".join(product["categories"])
     return (
         f"{product['title']}. "
@@ -52,25 +41,22 @@ def _product_to_text(product: dict) -> str:
 
 
 def generate_search_records(products: list[dict]) -> list[dict]:
-    """Generate search records with embeddings for a list of products."""
+    """Generate search records with mock random embeddings (1536-dim)."""
     brand_lookup, category_lookup = _build_lookup(products)
 
-    # ── Load model ───────────────────────────────────────────────────────
-    print(f"Loading model: {MODEL_NAME} …")
-    model = SentenceTransformer(MODEL_NAME, trust_remote_code=True)
-    print(f"Model loaded — embedding dim: {model.get_sentence_embedding_dimension()}")
-
-    # ── Encode ───────────────────────────────────────────────────────────
-    texts = [_product_to_text(p) for p in products]
-    print(f"Encoding {len(texts)} products (batch_size={BATCH_SIZE}) …")
-    embeddings = model.encode(texts, batch_size=BATCH_SIZE, show_progress_bar=True)
-
-    # ── Build records ────────────────────────────────────────────────────
+    print(f"Generating mock random embeddings (dim=1536) for {len(products)} products …")
+    
     records = []
-    for product, emb in zip(products, embeddings):
+    # Seed for reproducibility in seeding
+    random.seed(42)
+    
+    for product in products:
+        # Generate random 1536-dim vector
+        emb = [random.uniform(-1, 1) for _ in range(1536)]
+        
         records.append({
             "product_id": product["id"],
-            "embedding": emb.tolist(),
+            "embedding": emb,
             "brand_id": brand_lookup[product["brand"]],
             "brand_name": product["brand"],
             "tier": product["tier"],
@@ -93,10 +79,7 @@ def main():
     with open("product_search.json", "w") as f:
         json.dump(records, f, indent=2)
 
-    print(f"✅  Generated {len(records)} search records → product_search.json")
-    print(f"   Brands:     {len(brand_lookup)}")
-    print(f"   Categories: {len(category_lookup)}")
-    print(f"   Embedding dim: {model.get_sentence_embedding_dimension()}")
+    print(f"✅  Generated {len(records)} mock search records → product_search.json")
 
 
 if __name__ == "__main__":

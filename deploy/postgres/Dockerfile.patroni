@@ -1,0 +1,21 @@
+# Patroni node image
+# Based on timescaledb-ha which already includes PostgreSQL 17 + TimescaleDB +
+# pgvectorscale + Patroni 4.1.0.
+#
+# We only override the entrypoint so the container runs Patroni (the HA manager)
+# instead of the default standalone PostgreSQL entrypoint.
+
+FROM timescale/timescaledb-ha:pg17
+
+# Clean any pre-existing data so first volume mount starts truly empty
+USER root
+RUN rm -rf /home/postgres/pgdata && \
+    mkdir -p /home/postgres/pgdata && \
+    chown postgres:postgres /home/postgres/pgdata && \
+    mkdir -p /docker-entrypoint-initdb.d && \
+    chown postgres:postgres /docker-entrypoint-initdb.d
+
+USER postgres
+
+ENTRYPOINT ["/usr/bin/patroni"]
+CMD ["/home/postgres/patroni.yml"]

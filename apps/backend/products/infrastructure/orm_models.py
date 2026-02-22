@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import uuid
 
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from pgvector.django import VectorField
 
@@ -57,8 +58,8 @@ class ProductORM(models.Model):
     )
     categories = models.ManyToManyField(
         CategoryORM,
+        through="ProductCategoryORM",
         related_name="products",
-        db_table="product_categories",
         blank=True,
     )
     price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
@@ -80,6 +81,17 @@ class ProductORM(models.Model):
         return f"{self.title} ({self.brand.name})"
 
 
+class ProductCategoryORM(models.Model):
+    """Explicit through model to match SQL schema."""
+
+    product = models.ForeignKey(ProductORM, on_delete=models.CASCADE, db_column="product_id")
+    category = models.ForeignKey(CategoryORM, on_delete=models.CASCADE, db_column="category_id")
+
+    class Meta:
+        db_table = "products_categories"
+        unique_together = ("product", "category")
+
+
 class ProductSearchORM(models.Model):
     """Maps to the ``product_search`` read-optimised projection table."""
 
@@ -94,7 +106,7 @@ class ProductSearchORM(models.Model):
     brand_name = models.TextField(blank=True, default="")
     tier = models.CharField(max_length=20, blank=True, default="")
     price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    category_ids = models.JSONField(default=list, blank=True)
+    category_ids = ArrayField(models.BigIntegerField(), default=list, blank=True)
     gender = models.CharField(max_length=1, blank=True, default="")
     color = models.TextField(blank=True, default="")
 

@@ -5,18 +5,16 @@ from django.urls import path
 
 from products.application.views import (
     CategoryListView,
-    ProductCreateView,
     ProductDeleteView,
     ProductFilterView,
-    ProductListView,
+    ProductsView,
     TierListView,
 )
 
 urlpatterns = [
-    path("products/", ProductListView.as_view(), name="product-list"),
-    path("products/filter", ProductFilterView.as_view(), name="product-filter"),
-    path("products/create", ProductCreateView.as_view(), name="product-create"),
-    path("products/<str:public_id>", ProductDeleteView.as_view(), name="product-delete"),
-    path("categories/", CategoryListView.as_view(), name="category-list"),
-    path("tiers/", TierListView.as_view(), name="tier-list"),
+    path("", ProductsView.as_view(), name="product-list"),
+    path("/filter", ProductFilterView.as_view(), name="product-filter"),
+    path("/categories", CategoryListView.as_view(), name="category-list"),
+    path("/tiers", TierListView.as_view(), name="tier-list"),
+    path("/<str:public_id>", ProductDeleteView.as_view(), name="product-delete"),
 ]

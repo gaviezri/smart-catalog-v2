@@ -6,10 +6,12 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 
 urlpatterns: list = [
-    # API
-    path("api/auth/", include("users.application.urls")),
-    path("api/", include("products.application.urls")),
-    # OpenAPI
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    path("api", include([
+        # API
+        path("/auth", include("users.application.urls")),
+        path("/products", include("products.application.urls")),
+        # OpenAPI
+        path("/openapi/schema", SpectacularAPIView.as_view(), name="schema"),
+        path("/openapi/docs", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    ])),
 ]

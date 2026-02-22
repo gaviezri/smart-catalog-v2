@@ -39,6 +39,7 @@ MIDDLEWARE: list[str] = [
 ]
 
 ROOT_URLCONF: str = "config.urls"
+APPEND_SLASH: bool = False
 WSGI_APPLICATION: str = "config.wsgi.application"
 ASGI_APPLICATION: str = "config.asgi.application"
 
@@ -57,7 +58,7 @@ DATABASES: dict = {
     },
     "replica": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": env("DB_NAME", default="smart_catalog"),
+        "NAME": env("DB_REPLICA_NAME", default=env("DB_NAME", default="smart_catalog")),
         "USER": env("DB_USER", default="postgres"),
         "PASSWORD": env("DB_PASSWORD", default="postgres"),
         "HOST": env("DB_REPLICA_HOST", default="localhost"),
@@ -110,7 +111,7 @@ CORS_ALLOWED_ORIGINS: list[str] = env.list(
     default=[
         "http://localhost:5173",
         "http://localhost:3000",
-        "http://localhost:8080",
+        "http://localhost:8000",
     ],
 )
 CORS_ALLOW_CREDENTIALS: bool = True

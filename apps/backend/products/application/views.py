@@ -58,10 +58,19 @@ def _paged_response(products: list[Product], total: int, page: int, size: int) -
 
 # ── Views ────────────────────────────────────────────────────────────────────
 
-class ProductListView(APIView):
+class ProductsView(APIView):
     """List all products (paginated)."""
 
-    permission_classes = [AllowAny]
+    def get_permissions(self):
+        if self.request.method == "GET":
+            permission_classes = [AllowAny]
+        elif self.request.method == "POST":
+            permission_classes = [IsAuthenticated, IsAdmin]
+        else:
+            permission_classes = [IsAuthenticated, IsAdmin]
+        return [permission() for permission in permission_classes]
+
+    
 
     @extend_schema(
         summary="List products",
@@ -78,11 +87,41 @@ class ProductListView(APIView):
         request: Request,
         service: ProductService = Provide[ProductContainer.product_service],
     ) -> Response:
-        """Handle GET /api/products/."""
+        """Handle GET /api/products."""
         page: int = int(request.query_params.get("page", 0))
         size: int = int(request.query_params.get("size", 20))
         products, total = service.get_all_products(page, size)
         return Response(_paged_response(products, total, page, size))
+
+
+    @extend_schema(
+        summary="Create product",
+        description="Create a new product. Tier is auto-calculated from price.",
+        request=ProductCreateSerializer,
+        responses={201: ProductSerializer},
+    )
+    @inject
+    def post(
+        self,
+        request: Request,
+        service: ProductService = Provide[ProductContainer.product_service],
+    ) -> Response:
+        """Handle POST /api/products."""
+        serializer = ProductCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        product: Product = service.create(
+            title=data["title"],
+            brand_name=data["brandName"],
+            category_names=data["categoryNames"],
+            price=data["price"],
+            gender=data["gender"],
+            color=data.get("color", ""),
+            product_url=data.get("productUrl", ""),
+            image_url=data.get("imageUrl", ""),
+        )
+        return Response(_product_to_dict(product), status=status.HTTP_201_CREATED)
 
 
 class ProductFilterView(APIView):
@@ -124,41 +163,6 @@ class ProductFilterView(APIView):
 
         products, total = service.get_filtered(tier, category_ids, page, size)
         return Response(_paged_response(products, total, page, size))
-
-
-class ProductCreateView(APIView):
-    """Create a new product (ADMIN only)."""
-
-    permission_classes = [IsAuthenticated, IsAdmin]
-
-    @extend_schema(
-        summary="Create product",
-        description="Create a new product. Tier is auto-calculated from price.",
-        request=ProductCreateSerializer,
-        responses={201: ProductSerializer},
-    )
-    @inject
-    def post(
-        self,
-        request: Request,
-        service: ProductService = Provide[ProductContainer.product_service],
-    ) -> Response:
-        """Handle POST /api/products/."""
-        serializer = ProductCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-
-        product: Product = service.create(
-            title=data["title"],
-            brand_name=data["brandName"],
-            category_names=data["categoryNames"],
-            price=data["price"],
-            gender=data["gender"],
-            color=data.get("color", ""),
-            product_url=data.get("productUrl", ""),
-            image_url=data.get("imageUrl", ""),
-        )
-        return Response(_product_to_dict(product), status=status.HTTP_201_CREATED)
 
 
 class ProductDeleteView(APIView):
