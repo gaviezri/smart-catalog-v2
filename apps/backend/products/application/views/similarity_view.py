@@ -65,7 +65,7 @@ class ProductSimilarityView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-        products = service.find_hybrid_similar_products(
+        products = service.find_similar_products(
             vector=vector,
             max_price=max_price,
             category_ids=category_ids,

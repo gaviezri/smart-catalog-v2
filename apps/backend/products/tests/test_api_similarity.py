@@ -71,7 +71,7 @@ class TestProductSimilarityEndpoint:
         response = api_client.post("/api/products/similarity", {"vector": [1.0, 2.0]}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    @patch("products.domain.services.ProductService.find_hybrid_similar_products")
+    @patch("products.domain.services.ProductService.find_similar_products")
     def test_basic_similarity_search(
         self, mock_find: MagicMock, api_client: APIClient, mock_products: list[Product]
     ) -> None:
@@ -123,7 +123,7 @@ class TestProductSimilarityEndpoint:
         )
         assert response2.status_code == status.HTTP_400_BAD_REQUEST
 
-    @patch("products.domain.services.ProductService.find_hybrid_similar_products")
+    @patch("products.domain.services.ProductService.find_similar_products")
     def test_parses_filters_correctly(
         self, mock_find: MagicMock, api_client: APIClient, mock_products: list[Product]
     ) -> None:
