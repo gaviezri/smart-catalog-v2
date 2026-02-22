@@ -1,5 +1,7 @@
 """View: hybrid product similarity search."""
 from __future__ import annotations
+import base64
+import struct
 from decimal import Decimal, InvalidOperation
 
 from dependency_injector.wiring import Provide, inject
@@ -24,13 +26,13 @@ class ProductSimilarityView(APIView):
     @extend_schema(
         summary="Search similar products",
         description=(
-            "Hybrid search using a 1536-dimensional vector and optional metadata filters. "
+            "Hybrid search using a 1536-dimensional vector (base64 encoded float32 array) and optional metadata filters. "
             "Returns the top 5 most similar products by default."
         ),
         request={
             "application/json": {
                 "example": {
-                    "vector": [0.0] * 1536,
+                    "vector": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...",
                     "maxPrice": 100.0,
                     "categories": [1, 2],
                     "tier": 0,
@@ -77,9 +79,21 @@ class ProductSimilarityView(APIView):
         return Response(paged_response(products, len(products), 0, limit))
 
     def _get_vector(self, data: dict) -> list[float]:
-        vector = data.get("vector")
-        if not vector or not isinstance(vector, list) or len(vector) != 1536:
-            raise ValueError("A 1536-dimensional vector is required in the body.")
+        b64_vector = data.get("vector")
+        if not b64_vector or not isinstance(b64_vector, str):
+            raise ValueError("A base64 encoded 1536-dimensional vector is required in the body (string).")
+        
+        try:
+            binary_data = base64.b64decode(b64_vector)
+            if len(binary_data) != 1536 * 4:
+                raise ValueError(f"Decoded vector must be exactly 6144 bytes (1536 32-bit floats), got {len(binary_data)} bytes.")
+            
+            vector = list(struct.unpack("<1536f", binary_data))
+        except ValueError as e:
+            raise e
+        except Exception:
+            raise ValueError("Invalid base64 encoded vector.")
+            
         return vector
 
     def _get_max_price(self, data: dict) -> Decimal | None:

@@ -1,15 +1,24 @@
 """API integration tests for product similarity endpoint."""
 from __future__ import annotations
 
+import base64
+import struct
 from decimal import Decimal
 from unittest.mock import patch, MagicMock
 from uuid import uuid4
 
 import pytest
+from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
 from products.domain.models import Brand, Category, PriceTier, Product, Gender
+
+
+def encode_vector(vector: list[float]) -> str:
+    """Helper to base64 encode a vector to exactly match the expected api payload."""
+    binary_data = struct.pack(f"<{len(vector)}f", *vector)
+    return base64.b64encode(binary_data).decode("utf-8")
 
 
 @pytest.fixture()
@@ -63,12 +72,14 @@ class TestProductSimilarityEndpoint:
     """POST /api/products/similarity."""
 
     def test_requires_vector(self, api_client: APIClient) -> None:
-        response = api_client.post("/api/products/similarity", {}, format="json")
+        response = api_client.post(reverse("product-similarity"), {}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "1536-dimensional vector is required" in response.json()["error"]
+        assert "A base64 encoded 1536-dimensional vector is required" in response.json()["error"]
 
     def test_invalid_vector_size(self, api_client: APIClient) -> None:
-        response = api_client.post("/api/products/similarity", {"vector": [1.0, 2.0]}, format="json")
+        short_vector = [1.0, 2.0]
+        b64_str = encode_vector(short_vector)
+        response = api_client.post(reverse("product-similarity"), {"vector": b64_str}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     @patch("products.domain.services.ProductService.find_similar_products")
@@ -81,8 +92,8 @@ class TestProductSimilarityEndpoint:
 
         # Act
         response = api_client.post(
-            "/api/products/similarity",
-            {"vector": vector, "gender": "M", "maxPrice": 500.0},
+            reverse("product-similarity"),
+            {"vector": encode_vector(vector), "gender": "M", "maxPrice": 500.0},
             format="json"
         )
         
@@ -94,9 +105,15 @@ class TestProductSimilarityEndpoint:
         assert data["content"][0]["title"] == "Running Shoes"
         assert data["content"][1]["title"] == "Premium Jacket"
 
-        # Verify the service was called securely with the extracted filters
+        # Verify the service was called securely with the extracted filters (extracted accurately as list of floats!)
+        # Since struct slightly alters perfectly precise floats in decode, we just check that it gets close!
+        # Actually exact since floats like 0.0 and 0.9 (approx) match
+        called_vector = mock_find.call_args[1]["vector"]
+        assert len(called_vector) == 1536
+        assert abs(called_vector[0] - 0.9) < 1e-6
+
         mock_find.assert_called_once_with(
-            vector=vector,
+            vector=called_vector, # Verify floats in vector roughly matched what we sent inside
             max_price=Decimal("500.0"),
             category_ids=None,
             tier=None,
@@ -108,8 +125,8 @@ class TestProductSimilarityEndpoint:
         vector = [0.9] + [0.0] * 1535
         # Only 1 filter
         response = api_client.post(
-            "/api/products/similarity", 
-            {"vector": vector, "gender": "M"}, 
+            reverse("product-similarity"), 
+            {"vector": encode_vector(vector), "gender": "M"}, 
             format="json"
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -117,8 +134,8 @@ class TestProductSimilarityEndpoint:
         
         # 0 filters
         response2 = api_client.post(
-            "/api/products/similarity", 
-            {"vector": vector}, 
+            reverse("product-similarity"), 
+            {"vector": encode_vector(vector)}, 
             format="json"
         )
         assert response2.status_code == status.HTTP_400_BAD_REQUEST
@@ -132,9 +149,9 @@ class TestProductSimilarityEndpoint:
         
         # Act
         response = api_client.post(
-            "/api/products/similarity", 
+            reverse("product-similarity"), 
             {
-                "vector": vector, 
+                "vector": encode_vector(vector), 
                 "maxPrice": 200.0,
                 "categories": [10],
                 "tier": 0, # BUDGET
@@ -149,9 +166,11 @@ class TestProductSimilarityEndpoint:
         data = response.json()
         assert len(data["content"]) == 1
 
+        called_vector = mock_find.call_args[1]["vector"]
+
         # Most importantly, verify the view passed the correctly parsed types to the domain service
         mock_find.assert_called_once_with(
-            vector=vector,
+            vector=called_vector,
             max_price=Decimal("200.0"),
             category_ids=[10],
             tier=PriceTier.BUDGET,
@@ -162,8 +181,8 @@ class TestProductSimilarityEndpoint:
     def test_invalid_max_price(self, api_client: APIClient) -> None:
         vector = [0.1] * 1536
         response = api_client.post(
-            "/api/products/similarity", 
-            {"vector": vector, "maxPrice": "invalid", "gender": "M"}, 
+            reverse("product-similarity"), 
+            {"vector": encode_vector(vector), "maxPrice": "invalid", "gender": "M"}, 
             format="json"
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
