@@ -36,6 +36,18 @@ class ProductDAO(abc.ABC):
     def find_by_public_id(self, public_id: UUID) -> Product | None:
         """Look up a single product by its public UUID."""
 
+    @abc.abstractmethod
+    def find_similar(
+        self,
+        vector: list[float],
+        max_price: Decimal | None = None,
+        category_ids: list[int] | None = None,
+        tier: PriceTier | None = None,
+        gender: str | None = None,
+        limit: int = 5,
+    ) -> list[Product]:
+        """Return products similar to the vector, filtered by metadata."""
+
     # ── Writes ───────────────────────────────────────────────────────────
 
     @abc.abstractmethod

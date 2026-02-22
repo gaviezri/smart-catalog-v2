@@ -11,9 +11,16 @@ from uuid import UUID
 
 from django.db.models import QuerySet
 
+from pgvector.django import CosineDistance
+
 from products.domain.models import Brand, Category, Gender, PriceTier, Product
 from products.domain.ports import BrandDAO, CategoryDAO, ProductDAO
-from products.infrastructure.orm_models import BrandORM, CategoryORM, ProductORM
+from products.infrastructure.orm_models import (
+    BrandORM,
+    CategoryORM,
+    ProductORM,
+    ProductSearchORM,
+)
 
 
 def _orm_to_domain(orm: ProductORM) -> Product:
@@ -115,6 +122,38 @@ class DjangoProductDAO(ProductDAO):
         # Refetch with relations for the domain mapping
         orm = self._base_qs().get(pk=orm.pk)
         return _orm_to_domain(orm)
+
+    def find_similar(
+        self,
+        vector: list[float],
+        max_price: Decimal | None = None,
+        category_ids: list[int] | None = None,
+        tier: PriceTier | None = None,
+        gender: str | None = None,
+        limit: int = 5,
+    ) -> list[Product]:
+        """Hybrid similarity search using pgvector + metadata filters."""
+        qs = ProductSearchORM.objects.all()
+
+        if max_price is not None:
+            qs = qs.filter(price__lte=max_price)
+        if category_ids:
+            # ArrayField lookup in PostgreSQL
+            qs = qs.filter(category_ids__overlap=category_ids)
+        if tier is not None:
+            qs = qs.filter(tier=tier.value)
+        if gender is not None:
+            qs = qs.filter(gender=gender)
+
+        # Vector search using Cosine distance (<=>)
+        qs = (
+            qs.annotate(distance=CosineDistance("embedding", vector))
+            .order_by("distance")
+            .select_related("product__brand")
+            .prefetch_related("product__categories")[:limit]
+        )
+
+        return [_orm_to_domain(p.product) for p in qs]
 
     def delete_by_public_id(self, public_id: UUID) -> None:
         """Delete by public UUID."""

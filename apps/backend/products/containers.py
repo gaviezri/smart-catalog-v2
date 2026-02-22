@@ -21,6 +21,7 @@ class ProductContainer(containers.DeclarativeContainer):
             "products.application.views.product_delete_view",
             "products.application.views.category_list_view",
             "products.application.views.tier_list_view",
+            "products.application.views.similarity_view",
         ],
     )
 
