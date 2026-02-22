@@ -9,6 +9,7 @@ import type {
     Tier,
     Product,
     CreateProductRequest,
+    SimilarityRequest,
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -78,6 +79,14 @@ export const api = createApi({
             }),
             invalidatesTags: ['Products'],
         }),
+
+        getSimilarProducts: builder.mutation<ProductsResponse, SimilarityRequest>({
+            query: (body) => ({
+                url: '/api/products/similarity',
+                method: 'POST',
+                body,
+            }),
+        }),
     }),
 });
 
@@ -88,4 +97,5 @@ export const {
     useGetTiersQuery,
     useCreateProductMutation,
     useDeleteProductMutation,
+    useGetSimilarProductsMutation,
 } = api;

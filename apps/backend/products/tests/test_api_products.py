@@ -61,7 +61,7 @@ class TestProductListEndpoint:
     def test_list_returns_paginated(
         self, api_client: APIClient, sample_products: list[ProductORM]
     ) -> None:
-        response = api_client.get("/api/products/")
+        response = api_client.get("/api/products")
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert "content" in data
@@ -71,7 +71,7 @@ class TestProductListEndpoint:
     def test_list_respects_page_size(
         self, api_client: APIClient, sample_products: list[ProductORM]
     ) -> None:
-        response = api_client.get("/api/products/?size=2&page=0")
+        response = api_client.get("/api/products?size=2&page=0")
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["content"]) == 2
@@ -105,7 +105,7 @@ class TestProductCreateEndpoint:
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
         response = api_client.post(
-            "/api/products/",
+            "/api/products",
             {
                 "title": "New Product",
                 "brand_name": "Adidas",
@@ -129,7 +129,7 @@ class TestProductCreateEndpoint:
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
         response = api_client.post(
-            "/api/products/",
+            "/api/products",
             {
                 "title": "Forbidden",
                 "brand_name": "X",
@@ -143,7 +143,7 @@ class TestProductCreateEndpoint:
 
     def test_unauthenticated_cannot_create(self, api_client: APIClient) -> None:
         response = api_client.post(
-            "/api/products/",
+            "/api/products",
             {"title": "No auth", "brand_name": "X", "category_names": ["Y"], "price": "10", "gender": "U"},
             format="json",
         )

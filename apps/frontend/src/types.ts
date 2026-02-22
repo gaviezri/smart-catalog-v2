@@ -16,6 +16,7 @@ export interface ProductsResponse {
     totalPages: number;
     page: number;
     size: number;
+    isFallback?: boolean;
 }
 
 export interface Category {
@@ -59,4 +60,13 @@ export interface CreateProductRequest {
     price: number;
     productUrl: string;
     imageUrl: string;
+}
+
+export interface SimilarityRequest {
+    vector: string;
+    maxPrice?: number;
+    categories?: number[];
+    tier?: number;
+    gender?: string;
+    limit?: number;
 }
