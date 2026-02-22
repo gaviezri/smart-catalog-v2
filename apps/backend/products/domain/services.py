@@ -116,13 +116,47 @@ class ProductService:
         tier: PriceTier | None = None,
         gender: str | None = None,
         limit: int = 5,
+    ) -> tuple[list[Product], bool]:
+        """Return similar products using vector search + metadata filters.
+        
+        Implements a Zero-Match transparent filter relaxation fallback:
+        Returns a tuple of (results, is_fallback)
+        """
+        results = self._find_similar_strict(vector, max_price, category_ids, tier, gender, limit)
+        if results:
+            return results, False
+
+        results = self._find_similar_relax_price(vector, max_price, category_ids, tier, gender, limit)
+        if results is not None:
+            return results, True
+
+        results = self._find_similar_relax_tier(vector, category_ids, tier, gender, limit)
+        if results is not None:
+            return results, True
+
+        results = self._find_similar_bare_vector(vector, category_ids, gender, limit)
+        return results, True
+
+    def _find_similar_strict(
+        self, vector: list[float], max_price: Decimal | None, category_ids: list[int] | None, tier: PriceTier | None, gender: str | None, limit: int
     ) -> list[Product]:
-        """Return similar products using vector search + metadata filters."""
-        return self._product_dao.find_similar_product(
-            vector=vector,
-            max_price=max_price,
-            category_ids=category_ids,
-            tier=tier,
-            gender=gender,
-            limit=limit,
-        )
+        return self._product_dao.find_similar_product(vector, max_price, category_ids, tier, gender, limit)
+
+    def _find_similar_relax_price(
+        self, vector: list[float], max_price: Decimal | None, category_ids: list[int] | None, tier: PriceTier | None, gender: str | None, limit: int
+    ) -> list[Product] | None:
+        if max_price is None:
+            return None
+        return self._product_dao.find_similar_product(vector, None, category_ids, tier, gender, limit)
+
+    def _find_similar_relax_tier(
+        self, vector: list[float], category_ids: list[int] | None, tier: PriceTier | None, gender: str | None, limit: int
+    ) -> list[Product] | None:
+        if tier is None:
+            return None
+        return self._product_dao.find_similar_product(vector, None, category_ids, None, gender, limit)
+
+    def _find_similar_bare_vector(
+        self, vector: list[float], category_ids: list[int] | None, gender: str | None, limit: int
+    ) -> list[Product]:
+        return self._product_dao.find_similar_product(vector, None, category_ids, None, gender, limit)

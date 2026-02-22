@@ -16,6 +16,7 @@ export interface ProductsResponse {
     totalPages: number;
     page: number;
     size: number;
+    isFallback?: boolean;
 }
 
 export interface Category {

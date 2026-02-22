@@ -31,6 +31,7 @@ export default function MixAndMatchModal({ isOpen, onClose }: MixAndMatchModalPr
     const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
     const [maxPrice, setMaxPrice] = useState<number | ''>('');
     const [results, setResults] = useState<Product[] | null>(null);
+    const [isFallback, setIsFallback] = useState(false);
 
     const activeFiltersCount =
         (selectedTier !== undefined ? 1 : 0) +
@@ -56,6 +57,7 @@ export default function MixAndMatchModal({ isOpen, onClose }: MixAndMatchModalPr
 
             const response = await getSimilarProducts(request).unwrap();
             setResults(response.content);
+            setIsFallback(response.isFallback || false);
         } catch (error) {
             console.error('Failed to get similar products:', error);
         }
@@ -63,6 +65,7 @@ export default function MixAndMatchModal({ isOpen, onClose }: MixAndMatchModalPr
 
     const handleClose = () => {
         setResults(null);
+        setIsFallback(false);
         setSelectedTier(undefined);
         setSelectedCategories([]);
         setMaxPrice('');
@@ -79,10 +82,20 @@ export default function MixAndMatchModal({ isOpen, onClose }: MixAndMatchModalPr
                     <>
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-bold text-white">Your Matches</h2>
-                            <Button variant="secondary" onClick={() => setResults(null)}>
+                            <Button variant="secondary" onClick={() => { setResults(null); setIsFallback(false); }}>
                                 Back to Filters
                             </Button>
                         </div>
+                        {isFallback && (
+                            <div className="mb-6 p-4 bg-accent/10 border border-accent/20 rounded-xl">
+                                <p className="text-sm text-accent-light flex gap-2">
+                                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    We couldn't find exact matches that are close enough to your filters, but we can suggest these other products which are not very far from your original expectation.
+                                </p>
+                            </div>
+                        )}
                         <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                 {results.map(product => (

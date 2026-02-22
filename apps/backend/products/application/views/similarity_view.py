@@ -67,7 +67,7 @@ class ProductSimilarityView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-        products = service.find_similar_products(
+        products, is_fallback = service.find_similar_products(
             vector=vector,
             max_price=max_price,
             category_ids=category_ids,
@@ -76,7 +76,9 @@ class ProductSimilarityView(APIView):
             limit=limit,
         )
 
-        return Response(paged_response(products, len(products), 0, limit))
+        response_data = paged_response(products, len(products), 0, limit)
+        response_data["isFallback"] = is_fallback
+        return Response(response_data)
 
     def _get_vector(self, data: dict) -> list[float]:
         b64_vector = data.get("vector")
