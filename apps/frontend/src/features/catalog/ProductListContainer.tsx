@@ -16,9 +16,8 @@ export default function ProductListContainer() {
     const [pageSize, setPageSize] = useState(12);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showMixMatchModal, setShowMixMatchModal] = useState(false);
-    const [similarProducts, setSimilarProducts] = useState<any[] | null>(null);
 
-    const hasFilters = selectedTier !== undefined || selectedCategories.length > 0 || similarProducts !== null;
+    const hasFilters = selectedTier !== undefined || selectedCategories.length > 0;
 
     const { data, isLoading, isFetching, error } = useGetProductsQuery(
         {
@@ -32,7 +31,6 @@ export default function ProductListContainer() {
 
     const handleTierChange = (tier: number | undefined) => {
         setSelectedTier(tier);
-        setSimilarProducts(null);
         setPage(0);
     };
 
@@ -40,7 +38,6 @@ export default function ProductListContainer() {
         setSelectedCategories((prev) =>
             prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
         );
-        setSimilarProducts(null);
         setPage(0);
     };
 
@@ -52,7 +49,6 @@ export default function ProductListContainer() {
     const handleClear = () => {
         setSelectedTier(undefined);
         setSelectedCategories([]);
-        setSimilarProducts(null);
         setPage(0);
     };
 
@@ -66,14 +62,12 @@ export default function ProductListContainer() {
                             Product Catalog
                         </h1>
                         <p className="mt-1 text-text-muted">
-                            {similarProducts
-                                ? 'Showing similar products'
-                                : hasFilters && data ? `${data.totalElements} products found` : 'Select filters to browse products'}
+                            {hasFilters && data ? `${data.totalElements} products found` : 'Select filters to browse products'}
                         </p>
                     </div>
                     <div className="flex items-center gap-4">
                         {/* Page Size Selector */}
-                        {hasFilters && !similarProducts && (
+                        {hasFilters && (
                             <div className="flex items-center gap-2">
                                 <label htmlFor="page-size" className="text-sm font-medium text-text-muted">Show:</label>
                                 <select
@@ -169,12 +163,6 @@ export default function ProductListContainer() {
                                 <h3 className="text-lg font-semibold text-white">No products found</h3>
                                 <p className="text-text-muted mt-1">Try adjusting your filters</p>
                             </div>
-                        ) : similarProducts ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 transition-opacity">
-                                {similarProducts.map((product) => (
-                                    <ProductCard key={product.publicId} product={product} />
-                                ))}
-                            </div>
                         ) : (
                             <>
                                 <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 transition-opacity ${isFetching ? 'opacity-50' : ''}`}>
@@ -199,7 +187,6 @@ export default function ProductListContainer() {
             <MixAndMatchModal
                 isOpen={showMixMatchModal}
                 onClose={() => setShowMixMatchModal(false)}
-                onResults={setSimilarProducts}
             />
         </div>
     );
