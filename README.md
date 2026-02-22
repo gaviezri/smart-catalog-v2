@@ -12,7 +12,7 @@ see the `docs` for architectural decisions and topology.
 Single Postgres instance + Django backend — good for development and testing.
 
 ```bash
-docker compose --profile simple up --build
+docker compose --profile dev up --build
 ```
 
 This will:
@@ -28,7 +28,7 @@ Full HA stack: etcd → Patroni cluster (streaming replication) → HAProxy (rea
 (see `docs/DATA-LAYER.md` for more information)
 
 ```bash
-docker compose --profile ha up --build
+docker compose --profile production up --build
 ```
 
 This will spin up:
@@ -60,8 +60,8 @@ python -m pytest -v
 
 ```bash
 # Seed database manually (executed automatically at startup)
-docker compose exec backend-simple python manage.py seed_db   # simple mode
-docker compose exec backend-ha python manage.py seed_db       # HA mode
+docker compose exec backend-dev python manage.py seed_db   # dev mode
+docker compose exec backend-production python manage.py seed_db       # HA mode
 
 # Open Django shell
 docker compose exec backend-simple python manage.py shell

@@ -1,10 +1,10 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Smart Catalog V2 — Docker Compose
 #
-# Simple mode:  docker compose --profile simple up --build
+# Simple mode:  docker compose --profile dev up --build
 #   → single Postgres + backend + frontend
 #
-# Full HA mode: docker compose --profile ha up --build
+# Full HA mode: docker compose --profile production up --build
 #   → Patroni cluster + HAProxy + PgBouncer + backend + frontend
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -26,11 +26,11 @@ x-backend: &backend-base
 services:
 
   # ═══════════════════════════════════════════════════════════════════════════
-  #  SIMPLE MODE  (--profile simple)
+  #  SIMPLE MODE  (--profile dev)
   # ═══════════════════════════════════════════════════════════════════════════
 
   postgres:
-    profiles: [ "simple" ]
+    profiles: [ "dev" ]
     image: timescale/timescaledb-ha:pg17
     ports:
       - "5432:5432"
@@ -47,9 +47,9 @@ services:
       timeout: 3s
       retries: 10
 
-  backend-simple:
+  backend-dev:
     <<: *backend-base
-    profiles: [ "simple" ]
+    profiles: [ "dev" ]
     networks:
       default:
         aliases:
@@ -65,12 +65,12 @@ services:
         condition: service_healthy
 
   # ═══════════════════════════════════════════════════════════════════════════
-  #  HA MODE  (--profile ha)
+  #  HA MODE  (--profile production)
   # ═══════════════════════════════════════════════════════════════════════════
 
   # ── etcd — Distributed consensus for Patroni ─────────────────────────────
   etcd:
-    profiles: [ "ha" ]
+    profiles: [ "production" ]
     image: quay.io/coreos/etcd:v3.5.17
     environment:
       ETCD_NAME: etcd
@@ -90,7 +90,7 @@ services:
 
   # ── Patroni node 1 (primary candidate) ───────────────────────────────────
   patroni-1:
-    profiles: [ "ha" ]
+    profiles: [ "production" ]
     build:
       context: .
       dockerfile: deploy/postgres/Dockerfile.patroni
@@ -123,7 +123,7 @@ services:
 
   # ── Patroni node 2 (replica candidate) ───────────────────────────────────
   patroni-2:
-    profiles: [ "ha" ]
+    profiles: [ "production" ]
     build:
       context: .
       dockerfile: deploy/postgres/Dockerfile.patroni
@@ -144,7 +144,7 @@ services:
 
   # ── HAProxy — read/write split ───────────────────────────────────────────
   haproxy:
-    profiles: [ "ha" ]
+    profiles: [ "production" ]
     image: haproxy:lts
     ports:
       - "1936:1936" # stats dashboard
@@ -156,7 +156,7 @@ services:
 
   # ── PgBouncer — connection pooling ───────────────────────────────────────
   pgbouncer:
-    profiles: [ "ha" ]
+    profiles: [ "production" ]
     image: edoburu/pgbouncer:latest
     volumes:
       - ./deploy/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
@@ -170,9 +170,9 @@ services:
       retries: 15
 
   # ── Backend (HA mode) ────────────────────────────────────────────────────
-  backend-ha:
+  backend-production:
     <<: *backend-base
-    profiles: [ "ha" ]
+    profiles: [ "production" ]
     networks:
       default:
         aliases:
@@ -192,25 +192,25 @@ services:
   #  FRONTEND (both modes)
   # ═══════════════════════════════════════════════════════════════════════════
 
-  frontend-simple:
-    profiles: [ "simple" ]
+  frontend-dev:
+    profiles: [ "dev" ]
     build:
       context: apps/frontend
       dockerfile: Dockerfile
     ports:
       - "3000:80"
     depends_on:
-      - backend-simple
+      - backend-dev
 
-  frontend-ha:
-    profiles: [ "ha" ]
+  frontend-production:
+    profiles: [ "production" ]
     build:
       context: apps/frontend
       dockerfile: Dockerfile
     ports:
       - "3000:80"
     depends_on:
-      - backend-ha
+      - backend-production
 
 volumes:
   pg_data:
