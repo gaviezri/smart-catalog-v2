@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS product
     CONSTRAINT product_tier_check CHECK (tier::text = ANY (ARRAY['BUDGET'::character varying, 'MID'::character varying, 'PREMIUM'::character varying]::text[]))
 )
 ```
-A join table `product_categories` enables the many-to-many relationship between products and categories.
+A join table `products_categories` enables the many-to-many relationship between products and categories.
 
 With the new requirement to use `pgvector` (we will use `pgvectorscale` to move the memory burden from RAM to the disk to cut costs of the absurd amount of memory required for indexing),
 And the aspiration to keep the benefits of normalized data model, we will introduce the following search table:
@@ -171,4 +171,62 @@ Each index serves us in a different aspect:
 - indexes on `tier` and `brand_id` to allow filtering based on those criterias
 - index on `category_ids` to allow fast multivalue filtering by selected categories (_Sportswear_ + _Pants_ + _Waterproof_)
 
+### Why HNSW?
+Implementing the HNSW (Hierarchical Navigable Small World) index is critical for maintaining high-performance similarity searches as the product catalog grows. While a flat search performs a brute-force scan with $O(N)$ complexity, HNSW utilizes a multi-layered graph structure to enable Approximate Nearest Neighbor (ANN) search with $O(\log N)$ complexity. This ensures that semantic queries and recommendations remain sub-millisecond even at scale, providing the speed necessary for a premium user experience without the linear performance degradation of unindexed vector search.
+
 (is it "indexes" or "indices"...?)
+
+---
+
+## Operational Considerations
+
+### Running the HA Stack
+
+The full topology is activated via Docker Compose profiles:
+
+```bash
+# Simple mode — single Postgres, no HA
+docker compose --profile simple up --build
+
+# HA mode — full stack: etcd + Patroni cluster + HAProxy + PgBouncer
+docker compose --profile ha up --build
+```
+
+In **HA mode**, the backend connects through the full chain, verified end-to-end through Docker networking (no host ports needed for internal traffic).
+
+### Connection Routing
+
+| Layer | Host:Port | Role |
+|---|---|---|
+| **Django (default)** | `pgbouncer:6432` / DB `smart_catalog` | Write pool → HAProxy primary |
+| **Django (replica)** | `pgbouncer:6432` / DB `smart_catalog_replica` | Read pool → HAProxy replicas |
+| **PgBouncer** | `:6432` | Transaction-mode pooling; maps logical DB names to upstream endpoints |
+| **HAProxy** | `:5432` (write) / `:5433` (read) | TCP routing using Patroni REST API health checks (`/primary`, `/replica`) |
+| **Patroni** | `:5432` (PG) / `:8008` (REST API) | Manages streaming replication and automatic failover via etcd |
+
+Django's `ReadWriteRouter` directs reads to the `replica` database alias, which resolves to the read pool. This is configured in `config/settings/base.py` via:
+
+- `DB_HOST` / `DB_PORT` — write endpoint (PgBouncer or direct Postgres)
+- `DB_REPLICA_HOST` / `DB_REPLICA_PORT` — read endpoint
+- `DB_REPLICA_NAME` — logical database name in PgBouncer (defaults to `DB_NAME` for simple mode)
+
+### Failover Behaviour
+
+1. Patroni detects primary failure via etcd lease expiry (TTL: 30s)
+2. The surviving node is promoted to primary (~10–30s)
+3. HAProxy's health checks (`/primary`, `/replica`) re-route traffic automatically
+4. **Django requires zero config changes** — it continues pointing to PgBouncer/HAProxy, which now route to the new primary
+
+The HAProxy stats dashboard at `http://localhost:1936` (user: `admin`, pass: `password`) shows real-time backend health.
+
+### Dev vs Production Differences
+
+| Aspect | Dev (current) | Production |
+|---|---|---|
+| Patroni nodes | 2 | 3+ (odd number for quorum) |
+| PgBouncer auth | `trust` (no password) | `md5` or `scram-sha-256` with `userlist.txt` |
+| HAProxy stats | open on `:1936` | behind VPN / auth |
+| `shared_buffers` | 256 MB | 25% of RAM |
+| `work_mem` | 16 MB | 64 MB+ |
+| etcd | single node | 3-node cluster |
+

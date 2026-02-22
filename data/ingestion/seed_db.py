@@ -9,7 +9,7 @@ Flow:
   1. Check if `product` table already has rows  → skip if so
   2. Run generate_products   → products.json
   3. Run generate_embeddings → product_search.json   (real 1536-dim vectors)
-  4. Insert brands, categories, products, product_categories, product_search
+  4. Insert brands, categories, products, products_categories, product_search
 
 Requirements:
   pip install psycopg2-binary sentence-transformers torch
@@ -119,13 +119,13 @@ def _insert_products(
     return id_map
 
 
-def _insert_product_categories(
+def _insert_products_categories(
     cur,
     products: list[dict],
     product_id_map: dict[int, int],
     cat_map: dict[str, int],
 ):
-    """Populate the product_categories join table."""
+    """Populate the products_categories join table."""
     rows = []
     for p in products:
         db_product_id = product_id_map[p["id"]]
@@ -134,7 +134,7 @@ def _insert_product_categories(
 
     execute_values(
         cur,
-        "INSERT INTO product_categories (product_id, category_id) VALUES %s",
+        "INSERT INTO products_categories (product_id, category_id) VALUES %s",
         rows,
     )
 
@@ -212,7 +212,7 @@ def seed():
             brand_map = _insert_brands(cur, products)
             cat_map = _insert_categories(cur, products)
             product_id_map = _insert_products(cur, products, brand_map)
-            _insert_product_categories(cur, products, product_id_map, cat_map)
+            _insert_products_categories(cur, products, product_id_map, cat_map)
             _insert_product_search(
                 cur, search_records, product_id_map, brand_map, cat_map,
             )
