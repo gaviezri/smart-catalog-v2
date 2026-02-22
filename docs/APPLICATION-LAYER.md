@@ -53,6 +53,13 @@ When we add OAuth later, we write a new adapter, swap it in the DI container, an
 A single `python manage.py seed_db` command handles the full pipeline: default users + products from `products.json`.
 Idempotent — checks if tables already have data before insertion. This runs from the Docker entrypoint before `gunicorn` starts, so every fresh deployment gets a populated catalog out of the box.
 
+## Similarity Search
+
+For our vector-based product discovery, we implemented a hybrid search endpoint that combines semantic similarity with metadata filtering. 
+
+- **HTTP POST over GET**: Although the similarity search is a read-only operation, we use `POST` instead of `GET`. A 1536-dimensional embedding vector, when represented as a JSON array or a string, easily exceeds the URL length limits of most browsers and proxies (typically 2KB-8KB). `POST` allows us to safely transmit the large vector payload in the request body.
+- **Cosine Similarity over L2/L1**: We use **Cosine Distance** (`<=>` operator in `pgvector`) for measuring similarity. While L2 (Euclidean) distance measures the absolute distance between points, Cosine Similarity focuses on the angle between vectors. In high-dimensional embedding spaces, the directional orientation of a vector is often more semantically meaningful than its magnitude, making Cosine Similarity the industry standard for text and image embeddings.
+
 ## Known Limitations
 
 ### Token Blacklist (In-Memory)
