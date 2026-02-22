@@ -108,7 +108,7 @@ class ProductService:
             raise ProductNotFoundError(public_id)
         self._product_dao.delete_by_public_id(public_id)
         
-    def find_hybrid_similar_products(
+    def find_similar_products(
         self,
         vector: list[float],
         max_price: Decimal | None = None,
@@ -118,7 +118,7 @@ class ProductService:
         limit: int = 5,
     ) -> list[Product]:
         """Return similar products using vector search + metadata filters."""
-        return self._product_dao.find_similar(
+        return self._product_dao.find_similar_product(
             vector=vector,
             max_price=max_price,
             category_ids=category_ids,

@@ -37,7 +37,7 @@ class ProductDAO(abc.ABC):
         """Look up a single product by its public UUID."""
 
     @abc.abstractmethod
-    def find_similar(
+    def find_similar_product(
         self,
         vector: list[float],
         max_price: Decimal | None = None,

@@ -123,7 +123,7 @@ class DjangoProductDAO(ProductDAO):
         orm = self._base_qs().get(pk=orm.pk)
         return _orm_to_domain(orm)
 
-    def find_similar(
+    def find_similar_product(
         self,
         vector: list[float],
         max_price: Decimal | None = None,
