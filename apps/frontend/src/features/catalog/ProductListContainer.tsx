@@ -5,6 +5,7 @@ import FilterSidebar from './FilterSidebar';
 import ProductCard from './ProductCard';
 import Pagination from './Pagination';
 import AddProductModal from '../admin/AddProductModal';
+import MixAndMatchModal from './MixAndMatchModal';
 import { Button } from '../../components/ui/Button';
 
 export default function ProductListContainer() {
@@ -14,8 +15,10 @@ export default function ProductListContainer() {
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(12);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showMixMatchModal, setShowMixMatchModal] = useState(false);
+    const [similarProducts, setSimilarProducts] = useState<any[] | null>(null);
 
-    const hasFilters = selectedTier !== undefined || selectedCategories.length > 0;
+    const hasFilters = selectedTier !== undefined || selectedCategories.length > 0 || similarProducts !== null;
 
     const { data, isLoading, isFetching, error } = useGetProductsQuery(
         {
@@ -29,6 +32,7 @@ export default function ProductListContainer() {
 
     const handleTierChange = (tier: number | undefined) => {
         setSelectedTier(tier);
+        setSimilarProducts(null);
         setPage(0);
     };
 
@@ -36,6 +40,7 @@ export default function ProductListContainer() {
         setSelectedCategories((prev) =>
             prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
         );
+        setSimilarProducts(null);
         setPage(0);
     };
 
@@ -47,6 +52,7 @@ export default function ProductListContainer() {
     const handleClear = () => {
         setSelectedTier(undefined);
         setSelectedCategories([]);
+        setSimilarProducts(null);
         setPage(0);
     };
 
@@ -60,12 +66,14 @@ export default function ProductListContainer() {
                             Product Catalog
                         </h1>
                         <p className="mt-1 text-text-muted">
-                            {hasFilters && data ? `${data.totalElements} products found` : 'Select filters to browse products'}
+                            {similarProducts
+                                ? 'Showing similar products'
+                                : hasFilters && data ? `${data.totalElements} products found` : 'Select filters to browse products'}
                         </p>
                     </div>
                     <div className="flex items-center gap-4">
                         {/* Page Size Selector */}
-                        {hasFilters && (
+                        {hasFilters && !similarProducts && (
                             <div className="flex items-center gap-2">
                                 <label htmlFor="page-size" className="text-sm font-medium text-text-muted">Show:</label>
                                 <select
@@ -80,6 +88,16 @@ export default function ProductListContainer() {
                                 </select>
                             </div>
                         )}
+
+                        <Button
+                            onClick={() => setShowMixMatchModal(true)}
+                            className="bg-gradient-to-r from-accent to-primary hover:from-accent-hover hover:to-primary-hover border-transparent gap-2 shadow-lg shadow-accent/20"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                            </svg>
+                            Mix & Match
+                        </Button>
 
                         {role === 'ADMIN' && (
                             <Button onClick={() => setShowAddModal(true)} className="gap-2">
@@ -151,6 +169,12 @@ export default function ProductListContainer() {
                                 <h3 className="text-lg font-semibold text-white">No products found</h3>
                                 <p className="text-text-muted mt-1">Try adjusting your filters</p>
                             </div>
+                        ) : similarProducts ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 transition-opacity">
+                                {similarProducts.map((product) => (
+                                    <ProductCard key={product.publicId} product={product} />
+                                ))}
+                            </div>
                         ) : (
                             <>
                                 <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 transition-opacity ${isFetching ? 'opacity-50' : ''}`}>
@@ -172,6 +196,11 @@ export default function ProductListContainer() {
             </div>
 
             <AddProductModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} />
+            <MixAndMatchModal
+                isOpen={showMixMatchModal}
+                onClose={() => setShowMixMatchModal(false)}
+                onResults={setSimilarProducts}
+            />
         </div>
     );
 }

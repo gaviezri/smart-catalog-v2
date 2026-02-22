@@ -60,3 +60,12 @@ export interface CreateProductRequest {
     productUrl: string;
     imageUrl: string;
 }
+
+export interface SimilarityRequest {
+    vector: string;
+    maxPrice?: number;
+    categories?: number[];
+    tier?: number;
+    gender?: string;
+    limit?: number;
+}
