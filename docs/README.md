@@ -1,4 +1,4 @@
-# Topology
+# Topology (HA mode)
 
 ```mermaid
 graph TD
