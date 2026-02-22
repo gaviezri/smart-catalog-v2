@@ -105,7 +105,7 @@ class TestProductCreateEndpoint:
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
         response = api_client.post(
-            "/api/products/create",
+            "/api/products/",
             {
                 "title": "New Product",
                 "brand_name": "Adidas",
@@ -129,7 +129,7 @@ class TestProductCreateEndpoint:
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
         response = api_client.post(
-            "/api/products/create",
+            "/api/products/",
             {
                 "title": "Forbidden",
                 "brand_name": "X",
@@ -143,7 +143,7 @@ class TestProductCreateEndpoint:
 
     def test_unauthenticated_cannot_create(self, api_client: APIClient) -> None:
         response = api_client.post(
-            "/api/products/create",
+            "/api/products/",
             {"title": "No auth", "brand_name": "X", "category_names": ["Y"], "price": "10", "gender": "U"},
             format="json",
         )
@@ -183,7 +183,7 @@ class TestCategoryListEndpoint:
     def test_returns_categories(
         self, api_client: APIClient, sample_products: list[ProductORM]
     ) -> None:
-        response = api_client.get("/api/categories/")
+        response = api_client.get("/api/products/categories")
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         names: list[str] = [c["name"] for c in data]
@@ -196,7 +196,7 @@ class TestTierListEndpoint:
     """GET /api/tiers/."""
 
     def test_returns_all_tiers(self, api_client: APIClient) -> None:
-        response = api_client.get("/api/tiers/")
+        response = api_client.get("/api/products/tiers")
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         tier_names: list[str] = [t["name"] for t in data]
