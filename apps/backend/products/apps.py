@@ -15,4 +15,10 @@ class ProductsConfig(AppConfig):
         from products.containers import ProductContainer
 
         container = ProductContainer()
-        container.wire(modules=["products.application.views"])
+        container.wire(modules=[
+            "products.application.views.products_view",
+            "products.application.views.product_filter_view",
+            "products.application.views.product_delete_view",
+            "products.application.views.category_list_view",
+            "products.application.views.tier_list_view",
+        ])

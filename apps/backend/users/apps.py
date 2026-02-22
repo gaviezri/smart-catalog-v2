@@ -15,4 +15,7 @@ class UsersConfig(AppConfig):
         from users.containers import UserContainer
 
         container = UserContainer()
-        container.wire(modules=["users.application.views"])
+        container.wire(modules=[
+            "users.application.views.login_view",
+            "users.application.views.logout_view",
+        ])

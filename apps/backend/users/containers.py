@@ -12,7 +12,10 @@ class UserContainer(containers.DeclarativeContainer):
     """Wire domain services to infrastructure implementations."""
 
     wiring_config = containers.WiringConfiguration(
-        modules=["users.application.views"],
+        modules=[
+            "users.application.views.login_view",
+            "users.application.views.logout_view",
+        ],
     )
 
     user_repo = providers.Singleton(DjangoUserRepository)
