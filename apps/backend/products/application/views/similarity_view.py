@@ -1,10 +1,9 @@
 """View: hybrid product similarity search."""
 from __future__ import annotations
-
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from dependency_injector.wiring import Provide, inject
-from drf_spectacular.utils import extend_schema, OpenApiRequestBody
+from drf_spectacular.utils import extend_schema, OpenApiTypes
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
@@ -28,20 +27,18 @@ class ProductSimilarityView(APIView):
             "Hybrid search using a 1536-dimensional vector and optional metadata filters. "
             "Returns the top 5 most similar products by default."
         ),
-        request=OpenApiRequestBody(
-            content={
-                "application/json": {
-                    "example": {
-                        "vector": [0.0] * 1536,
-                        "maxPrice": 100.0,
-                        "categories": [1, 2],
-                        "tier": 0,
-                        "gender": "M",
-                        "limit": 5,
-                    }
+        request={
+            "application/json": {
+                "example": {
+                    "vector": [0.0] * 1536,
+                    "maxPrice": 100.0,
+                    "categories": [1, 2],
+                    "tier": 0,
+                    "gender": "M",
+                    "limit": 5,
                 }
             }
-        ),
+        },
         responses={200: dict},
     )
     @inject
@@ -59,10 +56,14 @@ class ProductSimilarityView(APIView):
             category_ids = self._get_categories(data)
             tier = self._get_tier(data)
             limit = self._get_limit(data)
+            gender = data.get("gender")
+
+            filters = [max_price is not None, bool(category_ids), tier is not None, gender is not None]
+            if sum(filters) < 2:
+                raise ValueError("At least 2 metadata filters (maxPrice, categories, tier, gender) are required.")
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        gender = data.get("gender")
 
         products = service.find_hybrid_similar_products(
             vector=vector,
@@ -86,7 +87,7 @@ class ProductSimilarityView(APIView):
         if max_price_val is not None:
             try:
                 return Decimal(str(max_price_val))
-            except (ValueError, TypeError):
+            except (ValueError, TypeError, InvalidOperation):
                 raise ValueError("Invalid maxPrice format.")
         return None
 

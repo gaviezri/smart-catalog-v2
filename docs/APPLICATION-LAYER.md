@@ -55,7 +55,7 @@ Idempotent — checks if tables already have data before insertion. This runs fr
 
 ## Similarity Search
 
-For our vector-based product discovery, we implemented a hybrid search endpoint that combines semantic similarity with metadata filtering. 
+For our vector-based product discovery, we implemented a hybrid search endpoint that combines semantic similarity with metadata filtering. We allow filtering the similarity search results by all the filters that are currently used for standard product queries (e.g., max price, categories, tier, and gender). This ensures the recommended items are not only visually or semantically similar, but also match the user's explicit preferences.
 
 - **HTTP POST over GET**: Although the similarity search is a read-only operation, we use `POST` instead of `GET`. A 1536-dimensional embedding vector, when represented as a JSON array or a string, easily exceeds the URL length limits of most browsers and proxies (typically 2KB-8KB). `POST` allows us to safely transmit the large vector payload in the request body.
 - **Cosine Similarity over L2/L1**: We use **Cosine Distance** (`<=>` operator in `pgvector`) for measuring similarity. While L2 (Euclidean) distance measures the absolute distance between points, Cosine Similarity focuses on the angle between vectors. In high-dimensional embedding spaces, the directional orientation of a vector is often more semantically meaningful than its magnitude, making Cosine Similarity the industry standard for text and image embeddings.
