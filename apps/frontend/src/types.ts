@@ -63,7 +63,7 @@ export interface CreateProductRequest {
 }
 
 export interface SimilarityRequest {
-    vector: string;
+    vector: number[];
     maxPrice?: number;
     categories?: number[];
     tier?: number;

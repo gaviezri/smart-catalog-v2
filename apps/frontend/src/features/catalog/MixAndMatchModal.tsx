@@ -4,17 +4,12 @@ import { Button } from '../../components/ui/Button';
 import ProductCard from './ProductCard';
 import type { Product } from '../../types';
 
-const generateMockBase64Vector = () => {
-    const floats = new Float32Array(1536);
+const generateMockVector = () => {
+    const vector: number[] = [];
     for (let i = 0; i < 1536; i++) {
-        floats[i] = Math.random() * 2 - 1;
+        vector.push(Math.random() * 2 - 1);
     }
-    const bytes = new Uint8Array(floats.buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
+    return vector;
 };
 
 interface MixAndMatchModalProps {
@@ -49,7 +44,7 @@ export default function MixAndMatchModal({ isOpen, onClose }: MixAndMatchModalPr
     const handleMatch = async () => {
         if (!isReady) return;
         try {
-            const vector = generateMockBase64Vector();
+            const vector = generateMockVector();
             const request: any = { vector, limit: 5 };
             if (selectedTier !== undefined) request.tier = selectedTier;
             if (selectedCategories.length > 0) request.categories = selectedCategories;
