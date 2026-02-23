@@ -81,7 +81,7 @@ class TestProductSimilarityEndpoint:
         self, mock_find: MagicMock, api_client: APIClient, mock_products: list[Product]
     ) -> None:
         # Arrange
-        mock_find.return_value = mock_products
+        mock_find.return_value = (mock_products, False)
         vector = [0.9] + [0.0] * 1535
 
         # Act
@@ -136,7 +136,7 @@ class TestProductSimilarityEndpoint:
     def test_parses_filters_correctly(
         self, mock_find: MagicMock, api_client: APIClient, mock_products: list[Product]
     ) -> None:
-        mock_find.return_value = [mock_products[0]]
+        mock_find.return_value = ([mock_products[0]], False)
         vector = [0.0, 0.9] + [0.0] * 1534
         
         # Act
